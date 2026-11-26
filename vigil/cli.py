@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 
 from . import __version__, compliance, parsers, licenses, registry, report, sarif, vuln, prokey
 
-PRO_URL = "https://github.com/pullyo/vigil#pro"  # TODO: point at the Gumroad page once it exists
+PRO_URL = "https://greenleaf34728.gumroad.com/l/rxejin"
 
 
 def _starter_policy() -> str:

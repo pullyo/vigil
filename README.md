@@ -161,8 +161,13 @@ export VIGIL_PRO_KEY=***
 vigil . --vuln --sbom bom.json --notice THIRD_PARTY_NOTICES.md
 ```
 
-Get a key: Pro keys are not on sale yet — open an issue at
-https://github.com/pullyo/vigil/issues to get a free early-access key.
+Get a key:
+
+- [Personal — $29](https://greenleaf34728.gumroad.com/l/rxejin) — one developer, all future updates.
+  Launch price **$15** for the first 20 buyers with code `LAUNCH15`.
+- [Team — $99](https://greenleaf34728.gumroad.com/l/qevcpj) — up to 10 developers plus your CI pipelines.
+
+Keys are emailed within 24 hours of purchase.
 
 The key can also live in `~/.vigil/key` or `./.vigil_key`, or be passed with
 `--key`. Keys are checked offline (an Ed25519 signature; vigil only ships the
