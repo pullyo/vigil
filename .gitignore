@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.vigil_key
+*.key
+signing*
+
+# internal working notes (agent handoff / strategy) and the unused TLS-fallback module
+HANDOFF.md
+STRATEGY.md
+vigil/net.py

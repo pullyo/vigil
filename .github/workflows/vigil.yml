@@ -1,0 +1,142 @@
+# vigil CI: tests + dependency license/CVE gate with SARIF output.
+#
+# Jobs
+#   tests          unit tests, mock-OSV E2E, and a demo SARIF report artifact.  [gating]
+#   vigil gate     scans this repository, uploads vigil.sarif as an artifact,
+#                  fails on findings at/above VIGIL_FAIL_ON.                    [gating]
+#   code-scanning  optional upload to GitHub Code Scanning; same-repo events
+#                  only, never blocks the PR gate.                              [optional]
+#
+# Make "tests" and "vigil gate" the required status checks. Do not require
+# "code-scanning": it needs Code Scanning to be available on the repository
+# (public repos, or private repos with GitHub Code Security).
+#
+# Security notes
+#   - Runs on pull_request (not pull_request_target): fork PRs get a read-only
+#     token and no secrets. No secrets are used anywhere in this workflow.
+#   - Every checkout sets persist-credentials: false.
+#   - No ${{ }} expressions are interpolated into run: scripts; configuration
+#     reaches shell via env only.
+#   - Artifacts from PR runs contain data derived from untrusted PR content.
+#     Do not consume them from a privileged workflow (e.g. workflow_run with
+#     write permissions); the code-scanning job re-scans instead of downloading.
+
+name: vigil
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: vigil-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Mock CVE E2E
+        run: python3 test_vuln_e2e.py
+
+      - name: Demo SARIF report (examples/demo, non-gating)
+        run: python3 -m vigil examples/demo -f sarif -o vigil-demo.sarif --fail-on never > /dev/null
+
+      - name: Upload demo SARIF artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: vigil-demo-sarif
+          path: vigil-demo.sarif
+          retention-days: 7
+
+  gate:
+    name: vigil gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      VIGIL_FAIL_ON: high   # any | high | warn | never
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          # This repository only: examples/ holds deliberately risky demo
+          # manifests (e.g. a GPL dependency) used by the tests job. Keep them
+          # out of the gate. Other projects should drop these three lines.
+          sparse-checkout: |
+            /*
+            !/examples/
+          sparse-checkout-cone-mode: false
+
+      - name: Scan (SARIF)
+        run: python3 -m vigil . -f sarif -o vigil.sarif --fail-on "$VIGIL_FAIL_ON" > /dev/null
+
+      - name: Report
+        if: always()
+        run: |
+          python3 -m vigil . --fail-on never
+          python3 -m vigil . -f md --fail-on never >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: vigil-sarif
+          path: vigil.sarif
+          if-no-files-found: warn
+          retention-days: 14
+
+  code-scanning:
+    name: code-scanning (optional)
+    # Only where a write-capable token is available: pushes to the default
+    # branch, manual runs, and PRs from branches of this same repository.
+    # Fork and Dependabot PRs are skipped (their token is read-only).
+    # Set repository variable VIGIL_CODE_SCANNING=false to turn this job off
+    # (e.g. private repos without GitHub Code Security).
+    if: >-
+      vars.VIGIL_CODE_SCANNING != 'false' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
+        (github.event_name == 'pull_request' &&
+         github.event.pull_request.head.repo.full_name == github.repository &&
+         github.actor != 'dependabot[bot]')
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /*
+            !/examples/
+          sparse-checkout-cone-mode: false
+
+      - name: Scan (SARIF, non-gating)
+        run: python3 -m vigil . -f sarif -o vigil.sarif --fail-on never > /dev/null
+
+      - name: Upload to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: vigil.sarif
+          category: vigil

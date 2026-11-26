@@ -1,0 +1,10 @@
+
+# vigil policy — gate which license classes your dependencies may use.
+[policy]
+license = "proprietary"   # proprietary | permissive | copyleft | unknown
+
+[[allowed]]
+class = "permissive"
+
+[[allowed]]
+class = "weak-copyleft"

@@ -1,0 +1,30 @@
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vigil"
+version = "0.1.0"
+description = "Dependency supply-chain sentinel: license taint + known CVEs for npm/pip/go/cargo/composer/gem."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "vigil contributors" }]
+keywords = ["dependency", "supply-chain", "license", "security", "cve", "osv", "audit"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+pro = []
+
+[project.scripts]
+vigil = "vigil.cli:main"
+
+[tool.setuptools]
+packages = ["vigil"]
